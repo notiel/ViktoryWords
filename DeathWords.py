@@ -1,5 +1,5 @@
 import design
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from PyQt5 import QtWidgets, QtGui
 import sys
 import os
@@ -7,15 +7,20 @@ from loguru import logger
 import httplib2
 import googleapiclient.discovery
 from oauth2client.service_account import ServiceAccountCredentials
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-import requests
 
 CREDENTIALS_FILE = 'token.json'
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+
+@dataclass
+class warrior:
+    name: str
+    wounds: int
+    core: str
+    death_words: field(default_factory=list)
+    technique: field(default_factory=list)
+
 
 def error_message(text: str):
     """
