@@ -1,0 +1,6 @@
+.*
+!/.gitignore
+__*
+__pycache__
+*.ui
+token.json
