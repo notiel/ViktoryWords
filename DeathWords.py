@@ -1,17 +1,15 @@
 import design
 from dataclasses import dataclass, field
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
 import sys
-import os
 from loguru import logger
 import httplib2
 import googleapiclient.discovery
 from oauth2client.service_account import ServiceAccountCredentials
+from typing import List
 
 CREDENTIALS_FILE = 'token.json'
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 @dataclass
 class warrior:
@@ -35,33 +33,41 @@ def error_message(text: str):
     error.setStandardButtons(QtWidgets.QMessageBox.Ok)
     error.exec_()
 
+
 class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.BtnLoad.clicked.connect(self.load_clicked)
-
-    def load_clicked(self):
+        # init googlesheets api auth
         credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE,
                                                                        ['https://www.googleapis.com/auth/spreadsheets',
                                                                         'https://www.googleapis.com/auth/drive'])
         http_auth = credentials.authorize(httplib2.Http())
-        url_parts = self.TxtPath.text().split(r'/')
-        start = self.LineStart.text()
-        end = self.LineEnd.text()
+        self.service = googleapiclient.discovery.build('sheets', 'v4', http=http_auth)
+        self.BtnLoad.clicked.connect(self.load_clicked)
+
+    def load_clicked(self):
+        url_parts: List[str] = self.TxtPath.text().split(r'/')
+        start: str = self.LineStart.text()
+        end: str = self.LineEnd.text()
         if len(url_parts) < 2:
             error_message("Ссылка на таблицу не валидна")
         else:
-            spreadsheet_id = url_parts[-1] if not "edit" in url_parts[-1] else url_parts[-2]
-            error_message(spreadsheet_id)
-            service = googleapiclient.discovery.build('sheets', 'v4', http=http_auth)
+            spreadsheet_id: str = url_parts[-1] if "edit" not in url_parts[-1] else url_parts[-2]
+            # noinspection PyUnresolvedReferences
             try:
-                answer = service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
-                                                             range='%s:%s' % (start, end)).execute()
+                answer = self.service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
+                                                                  range='%s:%s' % (start, end)).execute()
+                warrior_data: List[warrior] = list()
+                for character in answer['values']:
+                    if len(character) > 4:
+                        warrior_data.append(warrior(name=character[0], wounds=character[1], core=character[3],
+                                              death_words=character[2].split(', '),  technique=character[4:]))
+                
+
             except googleapiclient.errors.HttpError:
                 error_message("Таблица не существует,\n неверный диапазон ячеек\n или отказано в доступе")
-
 
 
 def initiate_exception_logging():
@@ -92,5 +98,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
