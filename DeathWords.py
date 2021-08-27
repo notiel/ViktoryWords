@@ -49,6 +49,10 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.BtnLoad.clicked.connect(self.load_clicked)
 
     def load_clicked(self):
+        """
+        loads data form link to SpreadSheet and parces it
+        :return:
+        """
         url_parts: List[str] = self.TxtPath.text().split(r'/')
         start: str = self.LineStart.text()
         end: str = self.LineEnd.text()
@@ -69,6 +73,11 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 error_message("Таблица не существует,\n неверный диапазон ячеек\n или отказано в доступе")
 
     def parse_warrior_data(self, warrior_list: List):
+        """
+        parse warrior data and creates structure with data and add it to UI
+        :param warrior_list: list with data from spreadsheet
+        :return:
+        """
         techniques: List[str] = list()
         death_words: List[str] = list()
         for character in warrior_list:
