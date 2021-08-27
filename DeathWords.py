@@ -20,6 +20,7 @@ class warrior:
     death_words: List[str] = field(default_factory=list)
     technique: List[str] = field(default_factory=list)
 
+
 @dataclass
 class result:
     win1: int = 0
@@ -44,6 +45,57 @@ def error_message(text: str):
     error.setWindowTitle('Error!')
     error.setStandardButtons(QtWidgets.QMessageBox.Ok)
     error.exec_()
+
+
+def get_figth_result(warrior1: warrior, warrior2: warrior, fight_result: result):
+    """
+    update result of figths with one more figth data
+    :param fight_result: current fight result structure
+    :param warrior1: first warrior data
+    :param warrior2: second warrior data
+    :return:
+    """
+    hit1 = warrior1.wounds
+    hit2 = warrior2.wounds
+    technique1 = warrior1.technique.copy()
+    technique2 = warrior2.technique.copy()
+    while hit1 > 0 and hit2 > 0:
+        # first warrior
+        if technique1:
+            current_technique = technique1.pop(randint(0, len(technique1)-1))
+            for word in current_technique.split():
+                if word.lower() in warrior2.death_words:
+                    hit2 -= 1
+                    if hit2 == 0:
+                        fight_result.death1 += 1
+                        fight_result.win1 += 1
+                        return
+                if word.lower() == warrior2.core.lower():
+                    fight_result.core1 += 1
+                    fight_result.win1 += 1
+                    return
+        else:
+            fight_result.tired2 += 1
+            fight_result.win2 += 1
+            return
+        # second warriors
+        if technique2:
+            current_technique = technique2.pop(randint(0, len(technique2)-1))
+            for word in current_technique.split():
+                if word.lower() in warrior1.death_words:
+                    hit1 -= 1
+                    if hit1 == 0:
+                        fight_result.death2 += 1
+                        fight_result.win2 += 1
+                        return
+                if word.lower() == warrior1.core.lower():
+                    fight_result.core2 += 1
+                    fight_result.win2 += 1
+                    return
+        else:
+            fight_result.tired1 += 1
+            fight_result.win1 += 1
+            return
 
 
 class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -95,7 +147,7 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         death_words: List[str] = list()
         for character in warrior_list:
             if len(character) > 4:
-                new_warrior = warrior(name=character[0], wounds=character[1], core=character[3],
+                new_warrior = warrior(name=character[0], wounds=int(character[1]), core=character[3],
                                       death_words=character[2].split(', '), technique=character[4:])
                 self.warrior_data.append(new_warrior)
                 self.CBWar1.addItem(character[0])
@@ -111,55 +163,25 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.BtnFight.setEnabled(True)
             self.LblHits.setText("Число ударов: %i" % len(techniques))
             self.LblWords.setText("Число слов: %i" % len(death_words))
+        print(sorted(techniques))
+        print(sorted(death_words))
 
     def fight_clicked(self):
-        pass
-
-    def get_figth_result(self, warrior1: warrior, warrior2: warrior, fight_result: result):
-        """
-        update result of figths with one more figth data
-        :param fight_result: current fight result structure
-        :param warrior1: first warrior data
-        :param warrior2: second warrior data
-        :return:
-        """
-        hit1 = warrior1.wounds
-        hit2 = warrior2.wounds
-        technique1 = warrior1.technique.copy()
-        technique2 = warrior2.technique.copy()
-        while hit1 > 0 and hit2 > 0:
-            # first warrior
-            if technique1:
-                current_technique = technique1.pop(randint(len(technique1)))
-                for word in current_technique.split():
-                    if word.lower() in warrior2.death_words:
-                        hit2 -= 1
-                        if hit2 == 0:
-                            fight_result.death1 += 1
-                            return
-                    if word.lower() == warrior2.core.lower():
-                        fight_result.core1 += 1
-                        return
-            else:
-                fight_result.tired2 += 1
-                return
-            # second warriors
-            if technique2:
-                current_technique = technique2.pop(randint(len(technique2)))
-                for word in current_technique.split():
-                    if word.lower() in warrior1.death_words:
-                        hit1 -= 1
-                        if hit1 == 0:
-                            fight_result.death2 += 1
-                            return
-                    if word.lower() == warrior1.core.lower():
-                        fight_result.core2 += 1
-                        return
-            else:
-                fight_result.tired1 += 1
-                return
-
-
+        warrior1_name = self.CBWar1.currentText()
+        warrior2_name = self.CBWar2.currentText()
+        warrior1 = [w for w in self.warrior_data if w.name == warrior1_name][0]
+        warrior2 = [w for w in self.warrior_data if w.name == warrior2_name][0]
+        new_result = result()
+        for i in range(self.SpinNum.value()):
+            get_figth_result(warrior1, warrior2, new_result)
+        self.LblWar1Vik.setText("%s победил %i раз" % (warrior1_name, new_result.win1))
+        self.LblWar2Vik.setText("%s победил %i раз" % (warrior2_name, new_result.win2))
+        self.LblWar1Wounds.setText("Из них ранения: %i" % new_result.death1)
+        self.LblWar2Wounds.setText("Из них ранения: %i" % new_result.death2)
+        self.LblWar1Tired.setText("Вымотал: %i раз" % new_result.tired1)
+        self.LblWar2Tired.setText("Вымотал: %i раз" % new_result.tired2)
+        self.LblWar1Kern.setText("Попал в ядро: %i раз" % new_result.core1)
+        self.LblWar2Kern.setText("Попал в ядро: %i раз" % new_result.core2)
 
 
 def initiate_exception_logging():
