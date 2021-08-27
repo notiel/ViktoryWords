@@ -7,6 +7,7 @@ import httplib2
 import googleapiclient.discovery
 from oauth2client.service_account import ServiceAccountCredentials
 from typing import List
+from random import randint
 
 CREDENTIALS_FILE = 'token.json'
 
@@ -16,8 +17,19 @@ class warrior:
     name: str
     wounds: int
     core: str
-    death_words: field(default_factory=list)
-    technique: field(default_factory=list)
+    death_words: List[str] = field(default_factory=list)
+    technique: List[str] = field(default_factory=list)
+
+@dataclass
+class result:
+    win1: int = 0
+    death1: int = 0
+    tired1: int = 0
+    core1: int = 0
+    win2: int = 0
+    death2: int = 0
+    tired2: int = 0
+    core2: int = 0
 
 
 def error_message(text: str):
@@ -47,6 +59,7 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.service = googleapiclient.discovery.build('sheets', 'v4', http=http_auth)
         self.warrior_data: List[warrior] = list()
         self.BtnLoad.clicked.connect(self.load_clicked)
+        self.BtnFight.clicked.connect(self.fight_clicked)
 
     def load_clicked(self):
         """
@@ -98,6 +111,55 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.BtnFight.setEnabled(True)
             self.LblHits.setText("Число ударов: %i" % len(techniques))
             self.LblWords.setText("Число слов: %i" % len(death_words))
+
+    def fight_clicked(self):
+        pass
+
+    def get_figth_result(self, warrior1: warrior, warrior2: warrior, fight_result: result):
+        """
+        update result of figths with one more figth data
+        :param fight_result: current fight result structure
+        :param warrior1: first warrior data
+        :param warrior2: second warrior data
+        :return:
+        """
+        hit1 = warrior1.wounds
+        hit2 = warrior2.wounds
+        technique1 = warrior1.technique.copy()
+        technique2 = warrior2.technique.copy()
+        while hit1 > 0 and hit2 > 0:
+            # first warrior
+            if technique1:
+                current_technique = technique1.pop(randint(len(technique1)))
+                for word in current_technique.split():
+                    if word.lower() in warrior2.death_words:
+                        hit2 -= 1
+                        if hit2 == 0:
+                            fight_result.death1 += 1
+                            return
+                    if word.lower() == warrior2.core.lower():
+                        fight_result.core1 += 1
+                        return
+            else:
+                fight_result.tired2 += 1
+                return
+            # second warriors
+            if technique2:
+                current_technique = technique2.pop(randint(len(technique2)))
+                for word in current_technique.split():
+                    if word.lower() in warrior1.death_words:
+                        hit1 -= 1
+                        if hit1 == 0:
+                            fight_result.death2 += 1
+                            return
+                    if word.lower() == warrior1.core.lower():
+                        fight_result.core2 += 1
+                        return
+            else:
+                fight_result.tired1 += 1
+                return
+
+
 
 
 def initiate_exception_logging():
