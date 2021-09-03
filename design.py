@@ -95,6 +95,9 @@ class Ui_MainWindow(object):
         self.LblWar2Wounds = QtWidgets.QLabel(self.centralwidget)
         self.LblWar2Wounds.setObjectName("LblWar2Wounds")
         self.gridLayout.addWidget(self.LblWar2Wounds, 7, 2, 1, 3)
+        self.BtnFull = QtWidgets.QPushButton(self.centralwidget)
+        self.BtnFull.setObjectName("BtnFull")
+        self.gridLayout.addWidget(self.BtnFull, 3, 9, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 603, 21))
@@ -130,4 +133,5 @@ class Ui_MainWindow(object):
         self.LineStart.setText(_translate("MainWindow", "a2"))
         self.LineEnd.setText(_translate("MainWindow", "k19"))
         self.LblWar2Wounds.setText(_translate("MainWindow", "Из них ранения:"))
+        self.BtnFull.setText(_translate("MainWindow", "Полный отчет"))
 
