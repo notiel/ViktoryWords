@@ -3,20 +3,17 @@ from dataclasses import dataclass, field
 from PyQt5 import QtWidgets
 import sys
 from loguru import logger
-import httplib2
-import googleapiclient.discovery
-from oauth2client.service_account import ServiceAccountCredentials
 from typing import List
 from random import randint
+import csv
 
-CREDENTIALS_FILE = 'token.json'
+logger.start("logfile.log", rotation="1 week", format="{time} {level} {message}", level="DEBUG", enqueue=True)
 
 
 @dataclass
 class warrior:
     name: str
     wounds: int
-    core: str
     death_words: List[str] = field(default_factory=list)
     technique: List[str] = field(default_factory=list)
 
@@ -26,11 +23,9 @@ class result:
     win1: int = 0
     death1: int = 0
     tired1: int = 0
-    core1: int = 0
     win2: int = 0
     death2: int = 0
     tired2: int = 0
-    core2: int = 0
     wounded1: int = 0
     wounded2: int = 0
 
@@ -73,10 +68,6 @@ def get_figth_result(warrior1: warrior, warrior2: warrior, fight_result: result)
                         fight_result.death1 += 1
                         fight_result.win1 += 1
                         return
-                if word.lower() == warrior2.core.lower():
-                    fight_result.core1 += 1
-                    fight_result.win1 += 1
-                    return
         else:
             fight_result.tired2 += 1
             fight_result.win2 += 1
@@ -92,10 +83,6 @@ def get_figth_result(warrior1: warrior, warrior2: warrior, fight_result: result)
                         fight_result.death2 += 1
                         fight_result.win2 += 1
                         return
-                if word.lower() == warrior1.core.lower():
-                    fight_result.core2 += 1
-                    fight_result.win2 += 1
-                    return
         else:
             fight_result.tired1 += 1
             fight_result.win1 += 1
@@ -107,12 +94,6 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        # init googlesheets api auth
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE,
-                                                                       ['https://www.googleapis.com/auth/spreadsheets',
-                                                                        'https://www.googleapis.com/auth/drive'])
-        http_auth = credentials.authorize(httplib2.Http())
-        self.service = googleapiclient.discovery.build('sheets', 'v4', http=http_auth)
         self.warrior_data: List[warrior] = list()
         self.BtnLoad.clicked.connect(self.load_clicked)
         self.BtnFight.clicked.connect(self.fight_clicked)
@@ -124,24 +105,20 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         :return:
         """
         self.statusbar.clearMessage()
-        url_parts: List[str] = self.TxtPath.text().split(r'/')
-        start: str = self.LineStart.text()
-        end: str = self.LineEnd.text()
-        if len(url_parts) < 2:
-            error_message("Ссылка на таблицу не валидна")
-        else:
-            spreadsheet_id: str = url_parts[-1] if "edit" not in url_parts[-1] else url_parts[-2]
-            # noinspection PyUnresolvedReferences
-            try:
-                answer = self.service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
-                                                                  range='%s:%s' % (start, end)).execute()
-                self.CBWar1.clear()
-                self.CBWar2.clear()
-                self.warrior_data = list()
-                self.parse_warrior_data(answer['values'])
-
-            except googleapiclient.errors.HttpError:
-                error_message("Таблица не существует,\n неверный диапазон ячеек\n или отказано в доступе")
+        self.CBWar1.clear()
+        self.CBWar2.clear()
+        self.warrior_data = list()
+        # noinspection PyArgumentList,PyCallByClass
+        new_filename = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file...', None, "*.csv")[0]
+        try:
+            if new_filename:
+                with open(new_filename, encoding='utf-8') as csvfile:
+                    data = csv.reader(csvfile, delimiter=',', quotechar='"')
+                    self.LblPath.setText("Выбран файл %s" % new_filename)
+                    self.parse_warrior_data(data)
+        except Exception as e:
+            error_message("Неверный формат файла")
+            logger.error(e)
 
     def parse_warrior_data(self, warrior_list: List):
         """
@@ -152,19 +129,23 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         techniques: List[str] = list()
         death_words: List[str] = list()
         for character in warrior_list:
-            if len(character) > 4:
-                new_warrior = warrior(name=character[0], wounds=int(character[1]), core=character[3].lower(),
-                                      death_words=character[2].lower().split(', '), technique=character[4:])
-                new_warrior.technique = [x.lower() for x in new_warrior.technique]
-                self.warrior_data.append(new_warrior)
-                self.CBWar1.addItem(character[0])
-                self.CBWar2.addItem(character[0])
-                for word in new_warrior.death_words:
-                    if word.lower() not in death_words:
-                        death_words.append(word.lower())
-                for technique in new_warrior.technique:
-                    if technique.lower() not in techniques:
-                        techniques.append(technique.lower())
+            try:
+                if len(character) > 4:
+                    new_warrior = warrior(name=character[0], wounds=int(character[1]),
+                                      death_words=character[2].lower().split(','), technique=character[3:])
+                    new_warrior.death_words = [x.strip() for x in new_warrior.death_words]
+                    new_warrior.technique = [x.lower().strip() for x in new_warrior.technique]
+                    self.warrior_data.append(new_warrior)
+                    self.CBWar1.addItem(character[0])
+                    self.CBWar2.addItem(character[0])
+                    for word in new_warrior.death_words:
+                        if word.lower() not in death_words:
+                            death_words.append(word.lower())
+                    for technique in new_warrior.technique:
+                        if technique.lower() not in techniques:
+                            techniques.append(technique.lower())
+            except ValueError:
+                continue
 
         if self.warrior_data:
             self.BtnFight.setEnabled(True)
@@ -188,8 +169,6 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.LblWar2Wounds.setText("Из них ранения: %i" % new_result.death2)
         self.LblWar1Tired.setText("Вымотан: %i раз" % new_result.tired1)
         self.LblWar2Tired.setText("Вымотан: %i раз" % new_result.tired2)
-        self.LblWar1Kern.setText("Попал в ядро: %i раз" % new_result.core1)
-        self.LblWar2Kern.setText("Попал в ядро: %i раз" % new_result.core2)
 
     def full_clicked(self):
         with open("fights.txt", "w") as f:
@@ -200,12 +179,12 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         new_result = result()
                         for i in range(self.SpinNum.value()):
                             get_figth_result(warrior1, warrior2, new_result)
-                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, Попал в ядро: %i раз, "
-                                "получил %i ран\n" % (warrior1.name, new_result.win1, new_result.death1,
-                                                    new_result.tired1, new_result.core1, new_result.wounded1))
-                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, Попал в ядро: %i раз, "
-                                "получил %i ран\n" % (warrior2.name, new_result.win2, new_result.death2,
-                                                    new_result.tired2, new_result.core2, new_result.wounded2))
+                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, получил %i ран\n"
+                                % (warrior1.name, new_result.win1, new_result.death1, new_result.tired1,
+                                   new_result.wounded1))
+                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, получил %i ран\n" %
+                                (warrior2.name, new_result.win2, new_result.death2, new_result.tired2,
+                                 new_result.wounded2))
         f.close()
         self.statusbar.showMessage("Результат записан в файл fights.txt")
 
