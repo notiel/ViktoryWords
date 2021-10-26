@@ -11,12 +11,25 @@ from random import randint
 
 CREDENTIALS_FILE = 'token.json'
 
+general = "вечность, долг, рассвет, совершенство, нежность, милосердие, страсть, танец, вихрь, холод"
+methal = "металл, звон, запад, осень, тигр, справедливость, белизна, журавль, лазурь, сила"
+tree = "восток, весна, утро, гнев, дракон, ветер, лазурь, синий, зеленый, порыв"
+fire = "красный, юг, лето, полдень, смех, сердце, радость, алый, феникс, пламя"
+water = "черный, ночь, север, зима, страх, черепаха, мудрость, холод, поток, ручей"
+ground = "золото, вечер, лето, единорог, сладость, пение, горы, камень, стойкость, путь"
+
+usin_destroy = {"дерево": methal, "металл": fire, "огонь": water, "вода": ground, "земля": tree}
+usin = {"дерево": tree, "металл": methal, "огонь": fire, "вода": water, "земля": ground}
+
 
 @dataclass
 class warrior:
     name: str
     wounds: int
+    style: str
+    element: str
     core: str
+    tech_num: int
     death_words: List[str] = field(default_factory=list)
     technique: List[str] = field(default_factory=list)
 
