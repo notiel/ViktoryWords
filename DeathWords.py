@@ -21,6 +21,8 @@ ground = "золото, вечер, лето, единорог, сладость
 usin_destroy = {"дерево": methal, "металл": fire, "огонь": water, "вода": ground, "земля": tree}
 usin = {"дерево": tree, "металл": methal, "огонь": fire, "вода": water, "земля": ground}
 
+titles = "abcdefghijklmnoprst"
+
 
 @dataclass
 class warrior:
@@ -130,6 +132,7 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.BtnLoad.clicked.connect(self.load_clicked)
         self.BtnFight.clicked.connect(self.fight_clicked)
         self.BtnFull.clicked.connect(self.full_clicked)
+        self.spreadsheet_id = ""
 
     def load_clicked(self):
         """
@@ -143,10 +146,10 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if len(url_parts) < 2:
             error_message("Ссылка на таблицу не валидна")
         else:
-            spreadsheet_id: str = url_parts[-1] if "edit" not in url_parts[-1] else url_parts[-2]
+            self.spreadsheet_id: str = url_parts[-1] if "edit" not in url_parts[-1] else url_parts[-2]
             # noinspection PyUnresolvedReferences
             try:
-                answer = self.service.spreadsheets().values().get(spreadsheetId=spreadsheet_id,
+                answer = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
                                                                   range='%s:%s' % (start, end)).execute()
                 self.CBWar1.clear()
                 self.CBWar2.clear()
@@ -164,11 +167,20 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         """
         techniques: List[str] = list()
         death_words: List[str] = list()
+        row = 1
         for character in warrior_list:
-            if len(character) > 4:
-                new_warrior = warrior(name=character[0], wounds=int(character[1]), core=character[3].lower(),
-                                      death_words=character[2].lower().split(', '), technique=character[4:])
-                new_warrior.technique = [x.lower() for x in new_warrior.technique]
+            row += 1
+            if len(character) > 5:
+                new_warrior = warrior(name=character[0], element=character[1].lower(), style=character[2].lower(),
+                                      tech_num=character[4], wounds=int(character[3]), core="", death_words=list(),
+                                      technique=list())
+                new_warrior.core = usin[new_warrior.element].split(', ')[randint(10)]
+                new_warrior.death_words.append(usin[new_warrior.element].split(', ')[randint(10)])
+                new_warrior.death_words.append(usin_destroy[new_warrior.element].split(', ')[randint(10)])
+                new_warrior.death_words.append(general.split(', ')[randint(10)])
+                used_words = general + ', ' + usin[new_warrior.element]
+                for i in range(new_warrior.tech_num):
+                    techniques.append(used_words.split(', ')[randint(20)] + used_words.split(', ')[randint(20)])
                 self.warrior_data.append(new_warrior)
                 self.CBWar1.addItem(character[0])
                 self.CBWar2.addItem(character[0])
@@ -178,7 +190,14 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for technique in new_warrior.technique:
                     if technique.lower() not in techniques:
                         techniques.append(technique.lower())
-
+                warrior_result = [new_warrior.name, new_warrior.element, new_warrior.style, new_warrior.wounds,
+                                  new_warrior.tech_num, new_warrior.core, new_warrior.death_words]
+                warrior_result.extend(techniques)
+                request_body = {"valueInputOption": "RAW",
+                        "data": [{"range": 'a%i:%s%i' % (row, titles[len(warrior_result)], row), "values": [result]}]}
+                request = self.service.spreadsheets().values().batchUpdate(spreadsheetId=self.spreadsheet_id,
+                                                              body=request_body)
+                _ = request.execute()
         if self.warrior_data:
             self.BtnFight.setEnabled(True)
             self.LblHits.setText("Число ударов: %i" % len(techniques))
