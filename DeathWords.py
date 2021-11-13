@@ -11,15 +11,15 @@ from random import randint
 
 CREDENTIALS_FILE = 'token.json'
 
-general = "вечность, долг, рассвет, совершенство, нежность, милосердие, страсть, танец, вихрь, холод"
-methal = "металл, звон, запад, осень, тигр, справедливость, белизна, журавль, лазурь, сила"
-tree = "восток, весна, утро, гнев, дракон, ветер, лазурь, синий, зеленый, порыв"
-fire = "красный, юг, лето, полдень, смех, сердце, радость, алый, феникс, пламя"
-water = "черный, ночь, север, зима, страх, черепаха, мудрость, холод, поток, ручей"
-ground = "золото, вечер, лето, единорог, сладость, пение, горы, камень, стойкость, путь"
+general = "вечность, долг, совершенство, милосердие, путь, вихрь"
+methal = "запад, осень, тигр, справедливость, лазурь, белизна"
+tree = "восток, весна, утро, гнев, дракон, зелень"
+fire = "полдень, сердце, радость, феникс, пламя, полдень"
+water = "ночь, север, страх, черепаха, ручей, озеро"
+ground = "золото, лето, единорог,  горы, камень, стойкость"
 
 usin_destroy = {"дерево": methal, "металл": fire, "огонь": water, "вода": ground, "земля": tree}
-usin = {"дерево": tree, "металл": methal, "огонь": fire, "вода": water, "земля": ground}
+usin = {"дерево": tree, "металл": methal, "огонь": fire, "вода": water, "земля": ground, 'база': general}
 
 titles = "abcdefghijklmnoprst"
 
@@ -156,8 +156,10 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.warrior_data = list()
                 self.parse_warrior_data(answer['values'])
 
-            except googleapiclient.errors.HttpError:
+            except googleapiclient.errors.HttpError as e:
                 error_message("Таблица не существует,\n неверный диапазон ячеек\n или отказано в доступе")
+                print(e)
+
 
     def parse_warrior_data(self, warrior_list: List):
         """
@@ -170,17 +172,35 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         row = 1
         for character in warrior_list:
             row += 1
-            if len(character) > 5:
+            if len(character) >= 5:
                 new_warrior = warrior(name=character[0], element=character[1].lower(), style=character[2].lower(),
-                                      tech_num=character[4], wounds=int(character[3]), core="", death_words=list(),
+                                      tech_num=int(character[4]), wounds=int(character[3]), core="", death_words=list(),
                                       technique=list())
-                new_warrior.core = usin[new_warrior.element].split(', ')[randint(10)]
-                new_warrior.death_words.append(usin[new_warrior.element].split(', ')[randint(10)])
-                new_warrior.death_words.append(usin_destroy[new_warrior.element].split(', ')[randint(10)])
-                new_warrior.death_words.append(general.split(', ')[randint(10)])
-                used_words = general + ', ' + usin[new_warrior.element]
+                new_warrior.core = usin[new_warrior.element].split(', ')[randint(0, 5)]
+                first_word = usin[new_warrior.element].split(', ')[randint(0, 5)]
+                while first_word == new_warrior.core:
+                    first_word = usin[new_warrior.element].split(', ')[randint(0, 5)]
+                new_warrior.death_words.append(first_word)
+                new_warrior.death_words.append(usin_destroy[new_warrior.element].split(', ')[randint(0, 5)])
+                new_warrior.death_words.append(general.split(', ')[randint(0, 5)])
+                one_more = general.split(', ')[randint(0, 5)]
+                while one_more in new_warrior.death_words:
+                    one_more = general.split(', ')[randint(0, 5)]
+                new_warrior.death_words.append(one_more)
+                used_words = general + ', ' + usin[new_warrior.style]
+                already_used = list()
                 for i in range(new_warrior.tech_num):
-                    techniques.append(used_words.split(', ')[randint(20)] + used_words.split(', ')[randint(20)])
+                    new1 = used_words.split(', ')[randint(0, 11)]
+                    if new_warrior.style != "база" and len(already_used) < 10:
+                        while new1 in already_used:
+                            new1 = used_words.split(', ')[randint(0, 11)]
+                    already_used.append(new1)
+                    new2 = used_words.split(', ')[randint(0, 11)]
+                    if new_warrior.style != "база" and len(already_used) < 10:
+                        while new2 in already_used:
+                            new2 = used_words.split(', ')[randint(0, 11)]
+                    new_warrior.technique.append(new1 + ' ' + new2)
+                    already_used.append(new2)
                 self.warrior_data.append(new_warrior)
                 self.CBWar1.addItem(character[0])
                 self.CBWar2.addItem(character[0])
@@ -191,10 +211,12 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     if technique.lower() not in techniques:
                         techniques.append(technique.lower())
                 warrior_result = [new_warrior.name, new_warrior.element, new_warrior.style, new_warrior.wounds,
-                                  new_warrior.tech_num, new_warrior.core, new_warrior.death_words]
-                warrior_result.extend(techniques)
+                                  new_warrior.tech_num, new_warrior.core, ' '.join(new_warrior.death_words)]
+                warrior_result.extend(new_warrior.technique)
+                print(len(warrior_result))
                 request_body = {"valueInputOption": "RAW",
-                        "data": [{"range": 'a%i:%s%i' % (row, titles[len(warrior_result)], row), "values": [result]}]}
+                        "data": [{"range": 'a%i:%s%i' % (row, titles[len(warrior_result)], row),
+                                  "values": [warrior_result]}]}
                 request = self.service.spreadsheets().values().batchUpdate(spreadsheetId=self.spreadsheet_id,
                                                               body=request_body)
                 _ = request.execute()
