@@ -11,45 +11,44 @@ from random import randint
 
 CREDENTIALS_FILE = 'token.json'
 
-general = "журавль дракон тигр феникс цилинь "
-special_lan = "свет лед холод белый "
-special_wen = "пламя огонь тьма красный "
-general_lan = "рассвет ручей тишина праведность "
-general_wen = "гора камень сила солнце "
-jiang = "вода справедливость "
-nie = "ярость танец "
+weak = 'алый белый лазурный пурпурный черный золотой серебряный изумрудный'
 
-core_dict = {"Вэнь": special_wen + general_wen, "Лань": special_lan + general_lan, "Цзян": jiang, "Не": nie}
-special_dict = {"Вэнь": special_wen, "Лань": special_lan, "Цзян": jiang, "Не": nie}
-general_dict = {"Вэнь": general_wen, "Лань": general_lan, "Цзян": general_lan, "Не": general_wen}
-fight_dict = {"Лань": special_wen + nie + jiang, "Вэнь": special_lan + nie + jiang,
-              "Не": special_lan + nie + jiang, "Цзян": special_wen + nie + jiang}
+special = 'вихрь тигр луч рассвет закат ледяной река ярость'
+
+extra = 'сила пламя феникс'
+
+general = "журавль дракон цилинь черепаха танец порыв долг путь гора камень ветер вода небо тишина воздух сон шепот "
 
 titles = "abcdefghijklmnoprst"
 
+base = {'Гу': 'вихрь', 'Шань': "закат", "Хо": 'ледяной', 'РиО': "река", 'Хэ': 'ярость'}
 
+east_sun = 'тигр в лучах рассвета'
+
+
+# noinspection PyPep8Naming
 @dataclass
 class warrior:
     name: str
     wounds: int
-    style: str
-    core: str
+    tech_num_weak: int
     tech_num: int
+    tech_num_strong: int
     word_num: int
+    base_tech: str
     death_words: List[str] = field(default_factory=list)
     technique: List[str] = field(default_factory=list)
 
 
+# noinspection PyPep8Naming
 @dataclass
 class result:
     win1: int = 0
     death1: int = 0
     tired1: int = 0
-    core1: int = 0
     win2: int = 0
     death2: int = 0
     tired2: int = 0
-    core2: int = 0
     wounded1: int = 0
     wounded2: int = 0
 
@@ -61,9 +60,11 @@ def error_message(text: str):
     :return:
     """
     error = QtWidgets.QMessageBox()
+    # noinspection PyUnresolvedReferences
     error.setIcon(QtWidgets.QMessageBox.Critical)
     error.setText(text)
     error.setWindowTitle('Error!')
+    # noinspection PyUnresolvedReferences
     error.setStandardButtons(QtWidgets.QMessageBox.Ok)
     error.exec_()
 
@@ -92,10 +93,7 @@ def get_figth_result(warrior1: warrior, warrior2: warrior, fight_result: result)
                         fight_result.death1 += 1
                         fight_result.win1 += 1
                         return
-                if word.lower() == warrior2.core.lower():
-                    fight_result.core1 += 1
-                    fight_result.win1 += 1
-                    return
+
         else:
             fight_result.tired2 += 1
             fight_result.win2 += 1
@@ -111,10 +109,7 @@ def get_figth_result(warrior1: warrior, warrior2: warrior, fight_result: result)
                         fight_result.death2 += 1
                         fight_result.win2 += 1
                         return
-                if word.lower() == warrior1.core.lower():
-                    fight_result.core2 += 1
-                    fight_result.win2 += 1
-                    return
+
         else:
             fight_result.tired1 += 1
             fight_result.win1 += 1
@@ -175,47 +170,78 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         row = 1
         for character in warrior_list:
             row += 1
-            if len(character) >= 5:
-                new_warrior = warrior(name=character[0], style=character[1], wounds=int(character[2]),
-                                      word_num=int(character[3]), tech_num=int(character[4]), core="",
-                                      death_words=list(), technique=list())
-                # ядро из специальных слов клана
-                core_source = core_dict[new_warrior.style].split()
-                new_warrior.core = core_source[randint(0, len(core_source) - 1)]
-                # всегда одно общее смерть-слово
-                new_warrior.death_words.append(general.split()[randint(0, len(general.split())) - 1])
-                # смерть-слово из общих слов клана без повтора с ядром
-                general_source = general_dict[new_warrior.style].split()
-                new_word = general_source[randint(0, len(general_source) - 1)]
-                while new_word == new_warrior.core:
-                    new_word = general_source[randint(0, len(general_source) - 1)]
-                new_warrior.death_words.append(new_word)
-                # смерть-слово из специальных слов клана, но без повторов с ядром
-                special_source = special_dict[new_warrior.style].split()
-                new_word = special_source[randint(0, len(special_source) - 1)]
-                while new_word == new_warrior.core:
-                    new_word = special_source[randint(0, len(special_source) - 1)]
-                new_warrior.death_words.append(new_word)
-                # остальные слова наугад из всех подходящих
-                for i in range(new_warrior.word_num - 3):
-                    words = (general + special_dict[new_warrior.style] + general_dict[new_warrior.style]).split()
-                    new_word = words[randint(0, len(words)) - 1]
-                    while new_word == new_warrior.core or new_word in new_warrior.death_words:
-                        new_word = words[randint(0, len(words)) - 1]
+            if len(character) >= 10:
+                new_warrior = warrior(name=character[0], wounds=int(character[1]),
+                                      word_num=int(character[2]), tech_num_weak=int(character[4]),
+                                      tech_num=int(character[5]), tech_num_strong=int(character[6]),
+                                      base_tech=character[9], death_words=list(), technique=list())
+                # смерть-слова из общих и специальных для стран и школы
+                source = general + special
+                new_warrior.death_words.append(source.split()[randint(0, len(source.split())) - 1])
+                for i in range(new_warrior.word_num - 1):
+                    new_word = source.split()[randint(0, len(source.split())) - 1]
+                    while new_word in new_warrior.death_words:
+                        new_word = source.split()[randint(0, len(source.split())) - 1]
                     new_warrior.death_words.append(new_word)
-                words_fight = (general + general_wen + general_lan + fight_dict[new_warrior.style]).split()
-                words_count = len(words_fight) - 1
+
+                # смерть-слово для всеобщего приема
+                i = randint(0, 2)
+                new_warrior.death_words.append(extra.split()[i])
+
+                # раздача приемов
                 already_used = list()
-                for i in range(new_warrior.tech_num):
-                    new1 = words_fight[randint(0, words_count)]
+                max_words = len(general.split()) - 1
+
+                # особый прием, если он есть
+                if new_warrior.base_tech in base.keys():
+                    second_word = general.split()[randint(0, max_words)]
+                    first_tech = base[new_warrior.base_tech] + ' ' + second_word
+                    new_warrior.technique.append(first_tech)
+                    already_used.append(second_word)
+                    new_warrior.tech_num -= 1
+                if new_warrior.base_tech == 'солнце' or new_warrior.name == 'Ху Лэй':
+                    new_warrior.technique.append(east_sun)
+                    new_warrior.tech_num_strong = - 1
+
+                # слабые приемы
+                for i in range(new_warrior.tech_num_weak):
+                    new1 = weak.split()[randint(0, len(weak.split())-1)]
                     while new1 in already_used:
-                        new1 = words_fight[randint(0, words_count)]
+                        new1 = weak.split()[randint(0, len(weak.split())-1)]
                     already_used.append(new1)
-                    new2 = words_fight[randint(0, words_count)]
+                    new2 = general.split()[randint(0, max_words)]
                     while new2 in already_used:
-                        new2 = words_fight[randint(0, words_count)]
+                        new1 = general.split()[randint(0, max_words)]
+                    already_used.append(new2)
+                    new_warrior.technique.append(new1 + ' ' + new2)
+
+                # обычные приемы
+                for i in range(new_warrior.tech_num):
+                    new1 = general.split()[randint(0, max_words)]
+                    while new1 in already_used:
+                        new1 = general.split()[randint(0, max_words)]
+                    already_used.append(new1)
+                    new2 = general.split()[randint(0, max_words)]
+                    while new2 in already_used:
+                        new2 = general.split()[randint(0, max_words)]
                     new_warrior.technique.append(new1 + ' ' + new2)
                     already_used.append(new2)
+
+                # сильные приемы
+                for i in range(new_warrior.tech_num_strong):
+                    new1 = general.split()[randint(0, max_words)]
+                    while new1 in already_used:
+                        new1 = general.split()[randint(0, max_words)]
+                    already_used.append(new1)
+                    new2 = general.split()[randint(0, max_words)]
+                    while new2 in already_used:
+                        new2 = general.split()[randint(0, max_words)]
+                    already_used.append(new2)
+                    new3 = general.split()[randint(0, max_words)]
+                    while new3 in already_used:
+                        new3 = general.split()[randint(0, max_words)]
+                    already_used.append(new3)
+                    new_warrior.technique.append(new1 + ' ' + new2 + ' ' + new3)
                 self.warrior_data.append(new_warrior)
                 self.CBWar1.addItem(character[0])
                 self.CBWar2.addItem(character[0])
@@ -225,12 +251,10 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 for technique in new_warrior.technique:
                     if technique.lower() not in techniques:
                         techniques.append(technique.lower())
-                warrior_result = [new_warrior.name, new_warrior.style, new_warrior.wounds, new_warrior.word_num,
-                                  new_warrior.tech_num, new_warrior.core, ' '.join(new_warrior.death_words)]
+                warrior_result = [' '.join(new_warrior.death_words)]
                 warrior_result.extend(new_warrior.technique)
-                print(len(warrior_result))
                 request_body = {"valueInputOption": "RAW",
-                                "data": [{"range": 'a%i:%s%i' % (row, titles[len(warrior_result)], row),
+                                "data": [{"range": 'k%i:%s%i' % (row, titles[len(warrior_result)+10], row),
                                           "values": [warrior_result]}]}
                 request = self.service.spreadsheets().values().batchUpdate(spreadsheetId=self.spreadsheet_id,
                                                                            body=request_body)
@@ -257,8 +281,6 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.LblWar2Wounds.setText("Из них ранения: %i" % new_result.death2)
         self.LblWar1Tired.setText("Вымотан: %i раз" % new_result.tired1)
         self.LblWar2Tired.setText("Вымотан: %i раз" % new_result.tired2)
-        self.LblWar1Kern.setText("Попал в ядро: %i раз" % new_result.core1)
-        self.LblWar2Kern.setText("Попал в ядро: %i раз" % new_result.core2)
 
     def full_clicked(self):
         with open("fights.txt", "w") as f:
@@ -269,12 +291,12 @@ class DeathWords(QtWidgets.QMainWindow, design.Ui_MainWindow):
                         new_result = result()
                         for i in range(self.SpinNum.value()):
                             get_figth_result(warrior1, warrior2, new_result)
-                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, Попал в ядро: %i раз, "
+                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, "
                                 "получил %i ран\n" % (warrior1.name, new_result.win1, new_result.death1,
-                                                      new_result.tired1, new_result.core1, new_result.wounded1))
-                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, Попал в ядро: %i раз, "
+                                                      new_result.tired1, new_result.wounded1))
+                        f.write("%s победил %i раз, Из них ранения: %i, Вымотал: %i раз, "
                                 "получил %i ран\n" % (warrior2.name, new_result.win2, new_result.death2,
-                                                      new_result.tired2, new_result.core2, new_result.wounded2))
+                                                      new_result.tired2, new_result.wounded2))
         f.close()
         self.statusbar.showMessage("Результат записан в файл fights.txt")
 
@@ -288,7 +310,7 @@ def initiate_exception_logging():
         # Print the error and traceback
         logger.exception(f"{exctype}, {value}, {traceback}")
         # Call the normal Exception hook after
-        # noinspection PyProtectedMember
+        # noinspection PyProtectedMember,PyUnresolvedReferences
         sys._excepthook(exctype, value, traceback)
         # sys.exit(1)
 
