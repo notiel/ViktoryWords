@@ -19,12 +19,12 @@ extra = 'сила пламя феникс'
 
 general = "журавль дракон цилинь черепаха танец порыв долг путь гора камень ветер вода небо тишина воздух сон шепот "
 
-titles = "abcdefghijklmnoprst"
 
 base = {'Гу': 'вихрь', 'Шань': "закат", "Хо": 'ледяной', 'РиО': "река", 'Хэ': 'ярость'}
 
 east_sun = 'тигр в лучах рассвета'
 
+titles = "abcdefghijklmnoprst"
 
 # noinspection PyPep8Naming
 @dataclass
